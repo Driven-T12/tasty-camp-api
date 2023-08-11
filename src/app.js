@@ -3,8 +3,9 @@ import cors from 'cors';
 
 const app = express(); // criando a aplicaçãp servidora
 app.use(cors()); // estou tornando publico o acesso a minha API
+app.use(express.json()); // dizendo para o servidor que o padrão de dados das requisições é json
 
-const receitas = [
+const receitas = [ // banco de dados simulado
     {
         id: 1,
         titulo: "Pão com Ovo",
@@ -36,6 +37,22 @@ app.get('/receitas/:id', (request, response)=>{
 app.get("/", (req, res) => {
     // Manda como resposta o texto 'Hello World'
     res.send('Hello World');
+});
+
+app.post('/receitas', (request, response)=>{
+    
+    //const { titulo, ingredientes, preparo} = request.body;
+
+    const novo = {
+        id: receitas.length + 1,
+        titulo: request.body.titulo,
+        ingredientes: request.body.ingredientes,
+        preparo: request.body.preparo
+    }
+
+    receitas.push(novo);
+
+    response.send(novo);
 });
 
 app.listen(4000, () => console.log('App Servidor executando na porta 4000'));
