@@ -21,6 +21,18 @@ const receitas = [ // banco de dados simulado
 ];
 
 app.get('/receitas', (request, response) =>{
+
+    const { filtro } = request.query;
+
+    console.log(request.headers.token);
+
+    console.log(filtro);
+
+    if ( filtro ){
+        const receitasFiltradas = receitas.filter( receita => receita.ingredientes.includes(filtro) );
+        return response.status(200).send(receitasFiltradas)
+    }
+
     response.send(receitas);
 });
 
@@ -41,18 +53,41 @@ app.get("/", (req, res) => {
 
 app.post('/receitas', (request, response)=>{
     
-    //const { titulo, ingredientes, preparo} = request.body;
+    const { titulo, ingredientes, preparo } = request.body;
+
+    if ( !titulo || !ingredientes || !preparo ){
+
+        response.status( 422 ).send("Todos os campos devem ser preenchidos!");
+        return;
+
+    }
+
+    if ( ingredientes.length <= 10 ){
+            
+        response.status( 422 ).send("Informações de ingredientes deve contar mais de 10 letras");
+        return;
+
+    }
+
+    const result = receitas.filter( receita => receita.titulo === titulo );
+
+    if(  !result ){
+        
+        response.status(409).send("Receita já cadastrada!"); 
+        return;
+    }
 
     const novo = {
         id: receitas.length + 1,
-        titulo: request.body.titulo,
-        ingredientes: request.body.ingredientes,
-        preparo: request.body.preparo
+        titulo: titulo,
+        ingredientes: ingredientes,
+        preparo: preparo
     }
 
-    receitas.push(novo);
+    receitas.push(novo);  
 
-    response.send(novo);
+    response.status(201).send(novo);
+
 });
 
 app.listen(4000, () => console.log('App Servidor executando na porta 4000'));
