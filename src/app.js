@@ -1,13 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
+import dotenv from "dotenv";
 
 const app = express(); // criando a aplicaçãp servidora
 app.use(cors()); // estou tornando publico o acesso a minha API
 app.use(express.json()); // dizendo para o servidor que o padrão de dados das requisições é json
+dotenv.config(); // permitir acesso ao arquivo .env (variáveis de ambiente)
 
 // Conexão com o mongoDB
-const mongoClient = new MongoClient("mongodb://localhost:27017/tastycamp") // Conexão localhost mongo
+const mongoClient = new MongoClient(process.env.DATABASE_URL) // Conexão localhost mongo
 let db
 
 mongoClient.connect()
