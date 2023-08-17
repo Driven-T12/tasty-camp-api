@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const app = express(); // criando a aplicaçãp servidora
 app.use(cors()); // estou tornando publico o acesso a minha API
@@ -23,7 +23,10 @@ app.get('/receitas', (request, response) => {
 
 app.get('/receitas/:id', (request, response) => {
     const { id } = request.params;
-    // TODO
+
+    db.collection("receitas").findOne({ _id: new ObjectId(id) })
+        .then(receita => response.send(receita))
+        .catch((err) => response.status(500).send(err))
 });
 
 app.post('/receitas', (request, response) => {
