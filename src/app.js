@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from "dotenv";
+import Joi from 'joi';
 
 const app = express();      // criando a aplicaçãp servidora
 app.use(cors());            // estou tornando publico o acesso a minha API
@@ -21,6 +22,11 @@ try {
 
 const db = mongoClient.db()
 
+const receitaSchema = Joi.object({
+    titulo: Joi.string().required(),
+    ingredientes: Joi.string().required().min(10),
+    preparo: Joi.string().required(),
+})
 
 // Rotas
 app.get('/receitas', async (request, response) => {
@@ -44,24 +50,21 @@ app.get('/receitas/:id', async (request, response) => {
 });
 
 app.post('/receitas', async (request, response) => {
-    const { titulo, ingredientes, preparo } = request.body;
+    const { titulo } = request.body;
 
-    if (!titulo || !ingredientes || !preparo) {
-        return response.status(422).send("Todos os campos devem ser preenchidos!");
+    const validation = receitaSchema.validate(request.body, { abortEarly: false })
+
+    if (validation.error) {
+        const errors = validation.error.details.map(det => det.message)
+        return response.status(422).send(errors)
     }
-
-    if (ingredientes.length <= 10) {
-        return response.status(422).send("Informações de ingredientes deve contar mais de 10 letras");
-    }
-
-    const novaReceita = { titulo, ingredientes, preparo }
 
     try {
         const receitaExiste = await db.collection("receitas").findOne({ titulo })
         if (receitaExiste) return response.status(409).send("Essa receita já existe!")
 
-        await db.collection("receitas").insertOne(novaReceita)
-        response.status(201).send(novaReceita)
+        await db.collection("receitas").insertOne(request.body)
+        response.status(201).send(request.body)
     } catch (err) {
         response.status(500).send(err.message)
     }
