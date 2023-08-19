@@ -70,4 +70,20 @@ app.post('/receitas', async (request, response) => {
     }
 });
 
+app.delete('/receitas/:id', async (request, response) => {
+    const { id } = request.params
+
+    try {
+        const resultado = await db.collection("receitas").deleteOne({ _id: new ObjectId(id) })
+
+        if (resultado.deletedCount === 0) return response.status(404).send("O item que você tentou deletar não existe!")
+
+        response.status(204).send("Item deletado com sucesso!")
+    } catch (err) {
+        response.status(500).send(err.message)
+    }
+})
+
+
+
 app.listen(4000, () => console.log('App Servidor executando na porta 4000'));
