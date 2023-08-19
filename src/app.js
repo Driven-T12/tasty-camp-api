@@ -84,6 +84,32 @@ app.delete('/receitas/:id', async (request, response) => {
     }
 })
 
+app.put('/receitas/:id', async (request, response) => {
+    const { id } = request.params
+    const { titulo, ingredientes, preparo } = request.body
 
+    const validation = receitaSchema.validate(request.body, { abortEarly: false })
+
+    if (validation.error) {
+        const errors = validation.error.details.map(det => det.message)
+        return response.status(422).send(errors)
+    }
+
+    try {
+        const resultado = await db.collection("receitas").updateOne(
+            { _id: new ObjectId(id) }, // filtro pra achar o item que vamos atualizar
+            { $set: { titulo, ingredientes, preparo } }
+            // objeto que determina o tipo da atualização (normalmente, vai ser um $set) 
+            //  e os novos valores que serão aplicados
+        )
+
+        if (resultado.matchedCount === 0) return response.status(404).send("O item que você tentou editar não existe!")
+
+        response.send(request.body)
+    } catch (err) {
+        response.status(500).send(err.message)
+    }
+
+})
 
 app.listen(4000, () => console.log('App Servidor executando na porta 4000'));
