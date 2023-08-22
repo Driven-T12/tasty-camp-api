@@ -3,6 +3,7 @@ import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from "dotenv";
 import Joi from 'joi';
+import bcrypt from "bcrypt"
 
 const app = express();      // criando a aplicaçãp servidora
 app.use(cors());            // estou tornando publico o acesso a minha API
@@ -26,6 +27,12 @@ const receitaSchema = Joi.object({
     titulo: Joi.string().required(),
     ingredientes: Joi.string().required().min(10),
     preparo: Joi.string().required(),
+})
+
+const usuarioSchema = Joi.object({
+    nome: Joi.string().required(),
+    email: Joi.string().email().required(),
+    senha: Joi.string().min(6).required(),
 })
 
 // Rotas
@@ -110,6 +117,51 @@ app.put('/receitas/:id', async (request, response) => {
         response.status(500).send(err.message)
     }
 
+})
+
+// Cadastro
+app.post('/sign-up', async (request, response) => {
+    const { nome, email, senha } = request.body
+
+    // Validação do body com o Joi
+    const validation = usuarioSchema.validate(request.body, { abortEarly: false })
+    if (validation.error) {
+        const errors = validation.error.details.map(detail => detail.message)
+        return response.status(422).send(errors)
+    }
+
+    // Criptografar a senha
+    const hash = bcrypt.hashSync(senha, 10)
+
+    try {
+        // Verificar se o e-mail já foi cadastrado
+        const usuario = await db.collection('usuarios').findOne({ email })
+        if (usuario) return response.status(409).send("Esse e-mail já está cadastrado!")
+
+        // Cadastrar o usuário com a senha criptografada
+        await db.collection('usuarios').insertOne({ nome, email, senha: hash })
+        response.sendStatus(201)
+    } catch (err) {
+        response.status(500).send(err.message)
+    }
+})
+
+// Login
+app.post('/sign-in', async (request, response) => {
+    const { email, senha } = request.body
+
+    try {
+        const usuario = await db.collection('usuarios').findOne({ email })
+        if (!usuario) return response.status(404).send("Esse usuário não existe!")
+
+        const senhaEstaCorreta = bcrypt.compareSync(senha, usuario.senha)
+        if (!senhaEstaCorreta) return response.status(401).send("Senha incorreta")
+
+        response.sendStatus(200)
+
+    } catch (err) {
+        response.status(500).send(err.message)
+    }
 })
 
 app.listen(4000, () => console.log('App Servidor executando na porta 4000'));
