@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from "dotenv";
 import Joi from 'joi';
 import bcrypt from "bcrypt"
+import { v4 as uuid } from "uuid"
 
 const app = express();      // criando a aplicaçãp servidora
 app.use(cors());            // estou tornando publico o acesso a minha API
@@ -37,7 +38,15 @@ const usuarioSchema = Joi.object({
 
 // Rotas
 app.get('/receitas', async (request, response) => {
+    const { authorization } = request.headers
+    const token = authorization?.replace("Bearer ", "")
+
+    if (!token) return response.status(401).send("Envie o token na requisição!")
+
     try {
+        const sessao = await db.collection("sessoes").findOne({ token })
+        if (!sessao) return response.status(401).send("Envie um token válido!")
+
         const receitas = await db.collection("receitas").find().toArray()
         response.send(receitas)
     } catch (err) {
@@ -47,8 +56,15 @@ app.get('/receitas', async (request, response) => {
 
 app.get('/receitas/:id', async (request, response) => {
     const { id } = request.params;
+    const { authorization } = request.headers
+    const token = authorization?.replace("Bearer ", "")
+
+    if (!token) return response.status(401).send("Envie o token na requisição!")
 
     try {
+        const sessao = await db.collection("sessoes").findOne({ token })
+        if (!sessao) return response.status(401).send("Envie um token válido!")
+
         const receita = await db.collection("receitas").findOne({ _id: new ObjectId(id) })
         response.send(receita)
     } catch (err) {
@@ -58,6 +74,10 @@ app.get('/receitas/:id', async (request, response) => {
 
 app.post('/receitas', async (request, response) => {
     const { titulo } = request.body;
+    const { authorization } = request.headers
+    const token = authorization?.replace("Bearer ", "")
+
+    if (!token) return response.status(401).send("Envie o token na requisição!")
 
     const validation = receitaSchema.validate(request.body, { abortEarly: false })
 
@@ -67,6 +87,9 @@ app.post('/receitas', async (request, response) => {
     }
 
     try {
+        const sessao = await db.collection("sessoes").findOne({ token })
+        if (!sessao) return response.status(401).send("Envie um token válido!")
+        
         const receitaExiste = await db.collection("receitas").findOne({ titulo })
         if (receitaExiste) return response.status(409).send("Essa receita já existe!")
 
@@ -157,8 +180,48 @@ app.post('/sign-in', async (request, response) => {
         const senhaEstaCorreta = bcrypt.compareSync(senha, usuario.senha)
         if (!senhaEstaCorreta) return response.status(401).send("Senha incorreta")
 
-        response.sendStatus(200)
+        const token = uuid()
+        await db.collection('sessoes').insertOne({ token, idUsuario: usuario._id })
+        response.send(token)
 
+    } catch (err) {
+        response.status(500).send(err.message)
+    }
+})
+
+app.get('/usuario-logado', async (request, response) => {
+    const { authorization } = request.headers
+    // optional chaining       \/
+    const token = authorization?.replace("Bearer ", "")
+
+    if (!token) return response.status(401).send("Envie o token na requisição!")
+
+    try {
+        const sessao = await db.collection("sessoes").findOne({ token })
+        if (!sessao) return response.status(401).send("Envie um token válido!")
+
+        // sessao = {token, idUsuario}
+        const usuario = await db.collection("usuarios").findOne({ _id: sessao.idUsuario })
+        delete usuario.senha
+
+        response.send(usuario)
+    } catch (err) {
+        response.status(500).send(err.message)
+    }
+})
+
+app.delete("/sign-out", async (request, response) => {
+    const { authorization } = request.headers
+    const token = authorization?.replace("Bearer ", "")
+
+    if (!token) return response.status(401).send("Envie o token na requisição!")
+
+    try {
+        const sessao = await db.collection("sessoes").findOne({ token })
+        if (!sessao) return response.status(401).send("Envie um token válido!")
+
+        await db.collection("sessoes").deleteOne({ token })
+        response.sendStatus(200)
     } catch (err) {
         response.status(500).send(err.message)
     }
