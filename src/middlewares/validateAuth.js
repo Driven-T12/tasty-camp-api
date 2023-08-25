@@ -10,6 +10,8 @@ export async function validateAuth(request, response, next) {
         const sessao = await db.collection("sessoes").findOne({ token })
         if (!sessao) return response.status(401).send("Envie um token válido!")
 
+        response.locals.sessao = sessao
+
         next()
     } catch (err) {
         response.status(500).send(err.message)

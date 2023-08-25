@@ -41,7 +41,8 @@ export async function cadastro(request, response) {
 }
 
 export async function usuarioLogado(request, response) {
-    
+
+    const sessao = response.locals.sessao
     try {
         const usuario = await db.collection("usuarios").findOne({ _id: sessao.idUsuario })
         delete usuario.senha
