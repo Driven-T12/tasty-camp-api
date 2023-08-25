@@ -1,7 +1,6 @@
 import { db } from "../database/database.connection.js";
 import { v4 as uuid } from "uuid";
 import bcrypt from "bcrypt";
-import { usuarioSchema } from "../schemas/usuarios.schemas.js";
 
 export async function login(request, response) {
     const { email, senha } = request.body
@@ -25,13 +24,6 @@ export async function login(request, response) {
 export async function cadastro(request, response) {
     const { nome, email, senha } = request.body
 
-    // Validação do body com o Joi
-    const validation = usuarioSchema.validate(request.body, { abortEarly: false })
-    if (validation.error) {
-        const errors = validation.error.details.map(detail => detail.message)
-        return response.status(422).send(errors)
-    }
-
     // Criptografar a senha
     const hash = bcrypt.hashSync(senha, 10)
 
@@ -49,17 +41,8 @@ export async function cadastro(request, response) {
 }
 
 export async function usuarioLogado(request, response) {
-    const { authorization } = request.headers
-    // optional chaining       \/
-    const token = authorization?.replace("Bearer ", "")
-
-    if (!token) return response.status(401).send("Envie o token na requisição!")
-
+    
     try {
-        const sessao = await db.collection("sessoes").findOne({ token })
-        if (!sessao) return response.status(401).send("Envie um token válido!")
-
-        // sessao = {token, idUsuario}
         const usuario = await db.collection("usuarios").findOne({ _id: sessao.idUsuario })
         delete usuario.senha
 
@@ -70,15 +53,7 @@ export async function usuarioLogado(request, response) {
 }
 
 export async function logout(request, response) {
-    const { authorization } = request.headers
-    const token = authorization?.replace("Bearer ", "")
-
-    if (!token) return response.status(401).send("Envie o token na requisição!")
-
     try {
-        const sessao = await db.collection("sessoes").findOne({ token })
-        if (!sessao) return response.status(401).send("Envie um token válido!")
-
         await db.collection("sessoes").deleteOne({ token })
         response.sendStatus(200)
     } catch (err) {
